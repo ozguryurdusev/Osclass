@@ -36,13 +36,16 @@ jobs:
       - name: Check if Tag Exists
         id: check_tag
         run: |
-          git fetch --tags
-          if git rev-parse "refs/tags/${OSCLASS_VERSION}" >/dev/null 2>&1; then
-            echo "Tag ${OSCLASS_VERSION} already exists. Skipping release."
-            echo "TAG_EXISTS=true" >> $GITHUB_ENV
-          else
-            echo "Tag ${OSCLASS_VERSION} does not exist. Proceeding with release."
-            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+            git fetch --tags
+            if git rev-parse "refs/tags/${OSCLASS_VERSION}" >/dev/null 2>&1; then
+              echo "Tag ${OSCLASS_VERSION} already exists. Skipping release."
+              echo "TAG_EXISTS=true" >> $GITHUB_ENV
+            else
+              echo "Tag ${OSCLASS_VERSION} does not exist. Proceeding with release."
+              echo "TAG_EXISTS=false" >> $GITHUB_ENV
+        shell: bash
+        env:
+          OSCLASS_VERSION: ${{ env.OSCLASS_VERSION }}
 
       - name: Stop if Tag Exists
         if: ${{ env.TAG_EXISTS == 'true' }}
