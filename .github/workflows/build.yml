@@ -4,100 +4,65 @@ on:
   push:
     branches:
       - develop
+
 permissions:
   contents: write
-  pull-requests: write
-  issues: write
-jobs:
-  create_release_branch_and_tag:
-    runs-on: ubuntu-latest
 
+jobs:
+  release:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout Code
         uses: actions/checkout@v2
 
-      - name: Get commit message and extract version
-        id: get_commit_message
+      - name: Extract OSCLASS_VERSION
+        id: extract_version
         run: |
-            MESSAGE=$(git log --format=%B -n 1 ${{ github.sha }})
-            echo "MESSAGE=$MESSAGE" >> $GITHUB_ENV
-            if [[ $MESSAGE =~ \[release-([0-9]+\.[0-9]+\.[0-9])+\.{0,1}([dev|rc|beta[0-9]*)?\] ]]; then
-                echo "Release string found in the commit message."
-                BASE_VERSION="${BASH_REMATCH[1]}" 
-                SUB_VERSION="${BASH_REMATCH[2]}"
-                SUB_SUB_VERSION="${BASH_REMATCH[3]}"
-                VERSION=${SUB_VERSION:+$BASE_VERSION.$SUB_VERSION}
-                VERSION=${VERSION:-$BASE_VERSION}
-                echo "BASE_VERSION=$BASE_VERSION" >> $GITHUB_ENV
-                echo "SUB_VERSION=$SUB_VERSION" >> $GITHUB_ENV
-                echo "SUB_SUB_VERSION=$SUB_SUB_VERSION" >> $GITHUB_ENV
-                echo "VERSION=$VERSION" >> $GITHUB_ENV
-            else
-                echo "No release string found in the commit message."
-            fi
-      - name: setup git config
-        if: env.VERSION != null
-        id: setup_git
-        run: |
-            # setup the username and email.'GitHub Actions Bot' with no email by default
-            git config user.name "GitHub Actions Bot"
-            git config user.email "<>"
-      - name: Create branch/tag
-        if: env.VERSION != null
-        id: create_branch
-        run: |
-            echo "Base version: $BASE_VERSION"
-            echo "Sub version: $SUB_VERSION"
-            echo "Sub sub version: $SUB_SUB_VERSION"
-            echo "Version: $VERSION"
-              
-            # Create release branch if not dev and release branch does not exist
+          RAW_VERSION=$(grep -oP "(?<=define\\('OSCLASS_VERSION', ')[^']+" oc-includes/osclass/default-constants.php)
+          
+          # Validate version and extract major.minor.patch and optional suffix
+          if [[ "${RAW_VERSION}" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(\.(dev[0-9]*|beta[0-9]*|rc[0-9]*))?$ ]]; then
+            BASE_VERSION="${BASH_REMATCH[1]}"
+            SUFFIX="${BASH_REMATCH[2]}"
+            echo "OSCLASS_VERSION=${RAW_VERSION}" >> $GITHUB_ENV
+            echo "BASE_VERSION=${BASE_VERSION}" >> $GITHUB_ENV
+            echo "SUFFIX=${SUFFIX}" >> $GITHUB_ENV
+            echo "Extracted version: ${RAW_VERSION}, Base: ${BASE_VERSION}, Suffix: ${SUFFIX}"
+          else
+            echo "Invalid OSCLASS_VERSION format: ${RAW_VERSION}"
+            exit 1
+          fi
 
-            if [[ $SUB_VERSION != "dev" ]]; then
-            # check if release branch already exists
-                if git show-ref --verify --quiet refs/heads/release/$BASE_VERSION; then
-                    echo "Release branch already exists."
-                    # checkout release branch and merge develop branch
-                    git pull origin release/$BASE_VERSION
-                    git checkout release/$BASE_VERSION
-                    git merge develop
-                else
-                    git checkout -b release/$BASE_VERSION
-                fi
-            fi
-              
-            # Update version in codebase
-            sed -i -E "s/define\('OSCLASS_VERSION.+\);/define('OSCLASS_VERSION', '$VERSION');/" oc-includes/osclass/default-constants.php
-              
-            # Commit changes if changes were made
-            if [[ $(git status --porcelain) ]]; then
-                git add oc-includes/osclass/default-constants.php
-                git commit -m "Update version to $VERSION"
-            fi
-              
-            # Push changes and create tag
-            git push origin HEAD 
-            git tag -a $VERSION -m "Release $VERSION"
-            git push origin $VERSION
-              
-            # Determine if pre-release dev release
-            PRERELEASE=false
-            if [[ $SUB_VERSION =~ (dev|rc|beta) ]]; then
-                PRERELEASE=true
-            fi
-            echo "PRERELEASE=$PRERELEASE" >> $GITHUB_ENV
-        
-      - name: Create GitHub Release Archive
-        if: env.VERSION != null
+      - name: Check if Tag Exists
+        id: check_tag
         run: |
-            sh ./.build.sh
+          git fetch --tags
+          if git rev-parse "refs/tags/${OSCLASS_VERSION}" >/dev/null 2>&1; then
+            echo "Tag ${OSCLASS_VERSION} already exists. Skipping release."
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "Tag ${OSCLASS_VERSION} does not exist. Proceeding with release."
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+
+      - name: Stop if Tag Exists
+        if: ${{ env.TAG_EXISTS == 'true' }}
+        run: echo "Tag already exists. Exiting."
+
+      - name: Create Release Tag
+        if: ${{ env.TAG_EXISTS == 'false' }}
+        run: |
+          git tag -a "${OSCLASS_VERSION}" -m "Release ${OSCLASS_VERSION}"
+          git push origin "${OSCLASS_VERSION}"
+
+      - name: Run Build Script
+        if: ${{ env.TAG_EXISTS == 'false' }}
+        run: sh ./.build.sh
+
       - name: Create GitHub Release
-        #Only create a release if the version is dev 
-        if: env.VERSION != null
+        if: ${{ env.TAG_EXISTS == 'false' }}
         uses: softprops/action-gh-release@v1
         with:
-          files: release/osclass_v${{ env.VERSION }}.zip
-          tag_name: ${{ env.BASE_VERSION }}
-          name: Release ${{ env.BASE_VERSION }}
-          draft: true
-          prerelease: ${{ env.PRERELEASE }}
+          files: release/osclass_v${{ env.OSCLASS_VERSION }}.zip
+          tag_name: ${{ env.OSCLASS_VERSION }}
+          name: Release ${{ env.OSCLASS_VERSION }}
+          prerelease: ${{ env.SUFFIX != '' }}
