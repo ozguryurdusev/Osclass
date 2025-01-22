@@ -1,25 +1,21 @@
 name: Release Workflow
-
 on:
   push:
     branches:
       - develop
-
 permissions:
   contents: write
-
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
+      
       - name: Extract OSCLASS_VERSION
         id: extract_version
         run: |
           RAW_VERSION=$(grep -oP "(?<=define\\('OSCLASS_VERSION', ')[^']+" oc-includes/osclass/default-constants.php)
-
           # Validate version and extract major.minor.patch and optional suffix
           if [[ "${RAW_VERSION}" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(\.(dev[0-9]*|beta[0-9]*|rc[0-9]*))?$ ]]; then
             BASE_VERSION="${BASH_REMATCH[1]}"
@@ -32,10 +28,13 @@ jobs:
             echo "Invalid OSCLASS_VERSION format: ${RAW_VERSION}"
             exit 1
           fi
+
       - name: Debug OSCLASS_VERSION
         run: echo "OSCLASS_VERSION=${{ env.OSCLASS_VERSION }}"
+
       - name: Check if Tag Exists
         id: check_tag
+        shell: bash
         run: |
           git fetch --tags --quiet
           if git tag --list "${OSCLASS_VERSION}" | grep -q "^${OSCLASS_VERSION}$"; then
@@ -44,8 +43,8 @@ jobs:
           else
             echo "Tag ${OSCLASS_VERSION} does not exist. Proceeding with release."
             echo "TAG_EXISTS=false" >> $GITHUB_ENV
-          shell: bash
-          
+          fi
+
       - name: Stop if Tag Exists
         if: ${{ env.TAG_EXISTS == 'true' }}
         run: echo "Tag already exists. Exiting."
@@ -68,4 +67,3 @@ jobs:
           tag_name: ${{ env.OSCLASS_VERSION }}
           name: Release ${{ env.OSCLASS_VERSION }}
           prerelease: ${{ env.SUFFIX != '' }}
-          
