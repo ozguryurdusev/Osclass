@@ -13,13 +13,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Extract OSCLASS_VERSION
         id: extract_version
         run: |
           RAW_VERSION=$(grep -oP "(?<=define\\('OSCLASS_VERSION', ')[^']+" oc-includes/osclass/default-constants.php)
-          
+
           # Validate version and extract major.minor.patch and optional suffix
           if [[ "${RAW_VERSION}" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(\.(dev[0-9]*|beta[0-9]*|rc[0-9]*))?$ ]]; then
             BASE_VERSION="${BASH_REMATCH[1]}"
@@ -36,16 +36,16 @@ jobs:
       - name: Check if Tag Exists
         id: check_tag
         run: |
-            git fetch --tags
-            if git rev-parse "refs/tags/${OSCLASS_VERSION}" >/dev/null 2>&1; then
-              echo "Tag ${OSCLASS_VERSION} already exists. Skipping release."
-              echo "TAG_EXISTS=true" >> $GITHUB_ENV
-            else
-              echo "Tag ${OSCLASS_VERSION} does not exist. Proceeding with release."
-              echo "TAG_EXISTS=false" >> $GITHUB_ENV
-        shell: bash
-        env:
-          OSCLASS_VERSION: ${{ env.OSCLASS_VERSION }}
+          git fetch --tags --quiet
+          if git tag --list "${OSCLASS_VERSION}" | grep -q "^${OSCLASS_VERSION}$"; then
+            echo "Tag ${OSCLASS_VERSION} already exists. Skipping release."
+            echo "TAG_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "Tag ${OSCLASS_VERSION} does not exist. Proceeding with release."
+            echo "TAG_EXISTS=false" >> $GITHUB_ENV
+          shell: bash
+          env:
+            OSCLASS_VERSION: ${{ env.OSCLASS_VERSION }}
 
       - name: Stop if Tag Exists
         if: ${{ env.TAG_EXISTS == 'true' }}
@@ -63,9 +63,10 @@ jobs:
 
       - name: Create GitHub Release
         if: ${{ env.TAG_EXISTS == 'false' }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           files: release/osclass_v${{ env.OSCLASS_VERSION }}.zip
           tag_name: ${{ env.OSCLASS_VERSION }}
           name: Release ${{ env.OSCLASS_VERSION }}
           prerelease: ${{ env.SUFFIX != '' }}
+          
