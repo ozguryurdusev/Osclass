@@ -52,6 +52,8 @@ jobs:
       - name: Create Release Tag
         if: ${{ env.TAG_EXISTS == 'false' }}
         run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
           git tag -a "${OSCLASS_VERSION}" -m "Release ${OSCLASS_VERSION}"
           git push origin "${OSCLASS_VERSION}"
 
