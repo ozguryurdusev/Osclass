@@ -668,7 +668,7 @@ class User extends DAO
             return false;
         }
 
-        $sql = sprintf('UPDATE %s SET i_items = i_items - 1 WHERE pk_i_id = %d', $this->getTableName(), $id);
+        $sql = sprintf('UPDATE %s SET i_items = IF(i_items > 0, i_items - 1, i_items) WHERE pk_i_id = %d', $this->getTableName(), $id);
 
         return $this->dao->query($sql);
     }
