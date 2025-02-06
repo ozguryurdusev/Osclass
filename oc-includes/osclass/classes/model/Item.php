@@ -856,7 +856,7 @@ class Item extends DAO
             $result = $this->dao->update(
                 $this->getTableName(),
                 sprintf('dt_expiration = %s', $dt_expiration),
-                sprintf(' WHERE pk_i_id = %d', $id)
+                sprintf('pk_i_id = %d', $id)
             );
             if ($result && $result > 0) {
                 $this->dao->select('i.dt_expiration, i.fk_i_user_id, i.fk_i_category_id, l.fk_c_country_code');
