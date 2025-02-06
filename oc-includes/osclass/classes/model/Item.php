@@ -843,7 +843,7 @@ class Item extends DAO
             if (ctype_digit($expiration_time)) {
                 if ($expiration_time > 0) {
                     $dt_expiration = sprintf(
-                        'date_add(%s.dt_pub_date, INTERVAL %d DAY)',
+                        'DATE_ADD(%s.dt_pub_date, INTERVAL %d DAY)',
                         $this->getTableName(),
                         $expiration_time
                     );
@@ -856,7 +856,7 @@ class Item extends DAO
             $result = $this->dao->update(
                 $this->getTableName(),
                 sprintf('dt_expiration = %s', $dt_expiration),
-                sprintf(' WHERE pk_i_id = %d', $id)
+                ['pk_i_id', $id]
             );
             if ($result && $result > 0) {
                 $this->dao->select('i.dt_expiration, i.fk_i_user_id, i.fk_i_category_id, l.fk_c_country_code');

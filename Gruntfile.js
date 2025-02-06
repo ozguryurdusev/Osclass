@@ -1,13 +1,14 @@
-/*
- * grunt-js
- */
-
 module.exports = function (grunt) {
     'use strict';
 
-    var assetsDir = 'oc-includes/assets',
-        nodeDir = 'node_modules';
+    // Define directories
+    var assetsDir = 'oc-includes/assets';
+    var nodeDir = 'node_modules';
 
+    // Load all grunt tasks
+    require('load-grunt-tasks')(grunt);
+
+    // Project configuration
     grunt.initConfig({
         clean: {
             vendors: [assetsDir, 'oc-admin/themes/modern/scss/bootstrap']
@@ -132,6 +133,20 @@ module.exports = function (grunt) {
                     },
                     {
                         expand: true,
+                        cwd: nodeDir + '/tinymce/models/dom',
+                        src: ['**/*.min.js'],
+                        dest: assetsDir + '/tinymce/models/dom',
+                        flatten: false
+                    },
+                    {
+                        expand: true,
+                        cwd: nodeDir + '/tinymce/skins',
+                        src: ['content/default/content.min.css', 'ui/oxide/skin.min.css'],
+                        dest: assetsDir + '/tinymce/skins',
+                        flatten: false
+                    },
+                    {
+                        expand: true,
                         cwd: nodeDir + '/tinymce/plugins',
                         src: ['advlist/*.min.js', 'anchor/*.min.js', 'autolink/*.min.js', 'charmap/*.min.js', 'code/*.min.js', 'fullscreen/*.min.js',
                             'image/*.min.js', 'imagetools/*.min.js', 'insertdatetime/*.min.js', 'link/*.min.js', 'lists/*.min.js', 'media/*.min.js', 'paste/*.min.js', 'preview/*.min.js',
@@ -208,10 +223,11 @@ module.exports = function (grunt) {
             }
         },
         sass: {
+            options: {
+                implementation: require('node-sass'),
+                style: 'nested'
+            },
             dist: {
-                options: {
-                    style: 'nested'
-                },
                 files: {
                     'oc-admin/themes/modern/css/main.css':
                         'oc-admin/themes/modern/scss/main.scss'
@@ -228,27 +244,17 @@ module.exports = function (grunt) {
                 }
             }
         }
-
     });
 
+    // Custom task to create assets directory if not exists
     grunt.registerTask('createAssetsDir', 'Creates the necessary static assets directory', function () {
-        // Create the assets dir when it doesn't exists.
         if (!grunt.file.isDir(assetsDir)) {
             grunt.file.mkdir(assetsDir);
-
-            // Output a success message
-            grunt.log.ok(grunt.template.process(
-                'Directory "<%= directory %>" was created successfully.',
-                {data: {directory: assetsDir}}
-            ));
+            grunt.log.ok('Directory "' + assetsDir + '" was created successfully.');
         }
     });
 
+    // Define tasks
     grunt.registerTask('default', ['clean', 'createAssetsDir', 'copy', 'sass', 'uglify']);
     grunt.registerTask('compile', ['sass']);
-    grunt.registerTask('uglify',['uglify']);
-    grunt.loadNpmTasks('grunt-contrib-clean');
-    grunt.loadNpmTasks('grunt-contrib-copy');
-    grunt.loadNpmTasks('grunt-contrib-sass');
-    grunt.loadNpmTasks('grunt-contrib-uglify');
 };
