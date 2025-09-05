@@ -11,6 +11,8 @@ services:
     volumes:
       - .:/application
       - ./.docker/php-fpm/php-ini-overrides.ini:/etc/php/8.2/fpm/conf.d/99-overrides.ini
+    depends_on:
+      -  php-fpm
     command: php-fpm
 
   # MySQL Database
@@ -21,6 +23,7 @@ services:
     container_name: osclass-mysql
     volumes:
       - mysql-data:/var/lib/mysql
+    restart: unless-stopped
     environment:
       - MYSQL_ROOT_PASSWORD=${ROOT_PASSWORD_MYSQL:-root}
       - MYSQL_DATABASE=${OSCLASS_DATABASE_NAME:-osclass}
@@ -40,6 +43,8 @@ services:
     volumes:
       - .:/application
       - ./.docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - php-fpm
     ports:
       - "5080:80"
 
