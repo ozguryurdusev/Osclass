@@ -40,8 +40,13 @@ services:
     volumes:
       - .:/application
       - ./.docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-    ports:
-      - "5080:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.osclass.rule=Host(`kampmarket.com.tr`)"
+      - "traefik.http.routers.osclass.entrypoints=web"
+      - "traefik.http.services.osclass.loadbalancer.server.port=80"
+   # ports:
+   #   - "5080:80"
 
   # Mailhog for Email Testing
   mailhog:
