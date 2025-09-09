@@ -12,8 +12,6 @@ services:
       - .:/application
       - ./.docker/php-fpm/php-ini-overrides.ini:/etc/php/8.2/fpm/conf.d/99-overrides.ini
     command: php-fpm
-    networks:
-      - dokploy-network
 
   # MySQL Database
   mysql:
@@ -28,14 +26,11 @@ services:
       - MYSQL_DATABASE=${OSCLASS_DATABASE_NAME:-osclass}
       - MYSQL_USER=${OSCLASS_DATABASE_USER:-osclass}
       - MYSQL_PASSWORD=${OSCLASS_DATABASE_PASSWORD:-osclass}
-    networks:
-      - dokploy-network      
+      
   # Memcached for Caching
   memcached:
     image: memcached:alpine
     container_name: osclass-memcached
-    networks:
-      - dokploy-network
 
   # Nginx Webserver
   webserver:
@@ -45,27 +40,15 @@ services:
     volumes:
       - .:/application
       - ./.docker/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
-    expose:
-      - 80
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.osclass.rule=Host(`kampmarket.com.tr`)"
-      - "traefik.http.routers.osclass.entrypoints=web"
-      - "traefik.http.services.osclass.loadbalancer.server.port=80"
-      - "traefik.http.routers.osclass.entrypoints=websecure"
-      - "traefik.http.routers.osclass.tls.certresolver=letsencrypt"
-    networks:
-      - dokploy-network
-   # ports:
-   #   - "5080:80"
+    ports:
+      - "5080:80"
+
   # Mailhog for Email Testing
   mailhog:
     image: mailhog/mailhog:latest
     container_name: osclass-mailhog
     ports:
       - "5025:8025"
-    networks:
-      - dokploy-network
 
   # PHPMyAdmin for Database Management
   phpmyadmin:
@@ -77,12 +60,6 @@ services:
       - PMA_HOST=mysql
       - PMA_USER=root
       - PMA_PASSWORD=${MYSQL_ROOT_PASSWORD:-root}
-    networks:
-      - dokploy-network
 # persistent volumes
 volumes:
   mysql-data:
-# dokploy / traefik network
-networks:
-  dokploy-network:
-    external: true
